@@ -1,0 +1,72 @@
+# VIVI Music — Windows desktop (Kotlin Multiplatform / Compose Desktop)
+
+A faithful desktop port of the VIVI Android client. It is not a rewrite: the app's
+own `:innertube` and `:lyricsProvider` modules are compiled directly into this
+build, so search, browse, artists, albums, playlists, radio and the whole lyrics
+provider stack are the same code that runs on Android.
+
+## What is ported
+
+| Android | Desktop |
+| --- | --- |
+| `innertube` module | compiled as-is (Ktor + OkHttp), tiny `android.util` shims |
+| `lyricsProvider` module (LrcLib, Better Lyrics, Unison, YouLyPlus, KuGou…) | compiled as-is (`Paxsenix` needs an `Android Context` and is skipped for now) |
+| `ui/theme` Material You (materialKolor, SPEC_2025-style colour schemes) | materialKolor `rememberDynamicColorScheme`, seed extracted from album art |
+| Player screen + synced lyrics (LRC/TTML, word + line sync) | Now Playing overlay with karaoke highlighting, click-to-seek |
+| Home / Explore / Search / Library / Album / Artist / Playlist screens | Compose Desktop screens with Material 3 components and Material icons |
+| Media3/ExoPlayer playback | JavaFX Media (AAC/MP4 stream), bundled with the app |
+| Room + DataStore | JSON library stored in `~/.vivi-music/library.json` |
+
+Still to port from Android (next steps, in order): downloads/offline cache,
+equalizer, local files, listen-together, listening stats/wrapped, in-app updater,
+and the full `Paxsenix` provider (needs the Apple Music token flow).
+
+## Requirements
+
+- Windows 10/11
+- JDK 21 (`JAVA_HOME` set)
+
+## Build
+
+```bat
+cd desktop
+gradlew.bat createDistributable
+```
+
+The packaged app appears in `build\compose\binaries\main\app\VIVIMusic\`.
+
+For an installer:
+
+```bat
+gradlew.bat packageMsi
+gradlew.bat packageExe
+```
+
+Output: `build\compose\binaries\main\msi\VIVIMusic-1.0.0.msi`
+
+## Run from source
+
+```bat
+gradlew.bat run
+```
+
+## Verify the data layer without a UI
+
+```bat
+gradlew.bat smoke
+```
+
+Prints home sections, search groups, an artist, an album, lyrics (provider +
+sync type) and a stream URL. If it reports `Sign in to confirm you're not a bot`,
+YouTube is rate-limiting that network — it works on normal home connections.
+
+## Notes
+
+- Playback needs a direct audio URL from YouTube Music. That is resolved per
+  track at play time (WEB_REMIX, then Android VR, then iOS clients).
+- Lyrics providers are tried in the order configured in Settings → Lyrics
+  providers; word-synced > line-synced > plain.
+- Nothing is uploaded anywhere: liked songs, playlists, history and settings
+  stay in `~/.vivi-music`.
+- Do not bump `version` without the core team's review (see the repository
+  AGENTS.md).
