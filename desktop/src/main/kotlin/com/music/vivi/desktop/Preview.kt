@@ -140,6 +140,17 @@ fun main() {
     Store.lyrics = null
     Store.showNowPlaying = false
 
+    Store.queue.addAll(
+        listOf(
+            demo.copy(id = "a", title = "Save Your Tears", duration = 215),
+            demo.copy(id = "b", title = "Starboy", duration = 230),
+            demo.copy(id = "c", title = "Die For You", duration = 260),
+        ),
+    )
+    Store.showQueue = true
+    shot("queue") { Page { App() } }
+    Store.showQueue = false
+
     shot("album") { Page { AlbumScreen("MPREb_cC2AzCC686k") } }
     shot("artist") { Page { ArtistScreen("UClYV6hHlupm_S_ObS1W-DYw") } }
 

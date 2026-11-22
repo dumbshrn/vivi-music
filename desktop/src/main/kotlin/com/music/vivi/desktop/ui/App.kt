@@ -106,7 +106,10 @@ fun App() {
                     visible = Store.showQueue,
                     enter = slideInVertically { it } + fadeIn(),
                     exit = slideOutVertically { it } + fadeOut(),
-                    modifier = Modifier.align(Alignment.BottomEnd),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 20.dp, bottom = 124.dp),
                 ) {
                     QueuePanel()
                 }
