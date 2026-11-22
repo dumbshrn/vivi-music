@@ -62,6 +62,16 @@ tasks.register<JavaExec>("smoke") {
     standardInput = System.`in`
 }
 
+tasks.register<JavaExec>("screenshots") {
+    group = "verification"
+    description = "Renders the Compose UI off-screen to build/screenshots"
+    mainClass.set("com.music.vivi.desktop.PreviewKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    jvmArgs("-Dskiko.renderApi=SOFTWARE", "-Djava.awt.headless=true")
+    workingDir = project.projectDir
+    standardOutput = System.out
+}
+
 compose.desktop {
     application {
         mainClass = "com.music.vivi.desktop.MainKt"

@@ -63,7 +63,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
-fun CoverArt(url: String?, size: Dp, shape: Shape = RoundedCornerShape(12.dp), modifier: Modifier = Modifier) {
+fun CoverArt(url: String?, size: Dp, shape: Shape = RoundedCornerShape(6.dp), modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(size)
@@ -113,15 +113,15 @@ fun SectionRow(
 }
 
 @Composable
-fun CardTile(card: MediaCard, onClick: () -> Unit, size: Dp = 172.dp) {
+fun CardTile(card: MediaCard, onClick: () -> Unit, size: Dp = 128.dp) {
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
-    val shape = if (card is MediaCard.Artist) CircleShape else RoundedCornerShape(18.dp)
+    val shape = if (card is MediaCard.Artist) CircleShape else RoundedCornerShape(6.dp)
 
     Column(
         modifier = Modifier
             .width(size)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .hoverable(interaction)
             .padding(6.dp),

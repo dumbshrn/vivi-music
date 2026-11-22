@@ -37,6 +37,7 @@ object Store {
     val providers = mutableStateListOf<String>().apply { addAll(persisted.providers) }
     var radio by mutableStateOf(persisted.radio)
     var artSeed by mutableStateOf<Color?>(null)
+    var pureBlack by mutableStateOf(false)
 
     val queue = mutableStateListOf<Track>()
     var index by mutableStateOf(-1)
