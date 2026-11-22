@@ -79,6 +79,7 @@ object Store {
     var repeat by mutableStateOf(RepeatMode.OFF)
     var showNowPlaying by mutableStateOf(false)
     var showQueue by mutableStateOf(false)
+    var showLyrics by mutableStateOf(false)
     var playbackError by mutableStateOf<String?>(null)
 
     var lyrics by mutableStateOf<Lyrics?>(null)

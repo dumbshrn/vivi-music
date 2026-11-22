@@ -74,7 +74,7 @@ import com.music.vivi.desktop.data.Store
 fun NowPlayingScreen() {
     val track = Store.current ?: return
     val colors = MaterialTheme.colorScheme
-    var showLyrics by remember { mutableStateOf(false) }
+    val showLyrics = Store.showLyrics
     var menuOpen by remember { mutableStateOf(false) }
 
     val tint = Store.artSeed ?: colors.primary
@@ -119,7 +119,10 @@ fun NowPlayingScreen() {
             }
 
             Row(Modifier.fillMaxSize().padding(top = 12.dp)) {
-                if (!showLyrics) Spacer(Modifier.weight(1f))
+                if (showLyrics) {
+                    LyricsPane(Modifier.fillMaxSize())
+                } else {
+                Spacer(Modifier.weight(1f))
                 Column(
                     Modifier.widthIn(max = 500.dp).fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -256,7 +259,7 @@ fun NowPlayingScreen() {
                             icon = Icons.Rounded.Subject,
                             description = "Lyrics",
                             active = showLyrics,
-                            onClick = { showLyrics = !showLyrics },
+                            onClick = { Store.showLyrics = !Store.showLyrics },
                         )
                         CircleAction(
                             icon = Icons.Rounded.Shuffle,
@@ -304,10 +307,7 @@ fun NowPlayingScreen() {
                     Spacer(Modifier.weight(1f))
                 }
 
-                if (showLyrics) {
-                    LyricsPane(Modifier.weight(1f).fillMaxSize().padding(start = 36.dp))
-                } else {
-                    Spacer(Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
                 }
             }
         }

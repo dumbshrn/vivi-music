@@ -9,6 +9,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
+import com.music.vivi.desktop.data.LyricLine
+import com.music.vivi.desktop.data.Lyrics
 import com.music.vivi.desktop.data.Route
 import com.music.vivi.desktop.data.Store
 import com.music.vivi.desktop.data.Track
@@ -48,7 +50,11 @@ private fun shot(
 @Composable
 private fun Page(content: @Composable () -> Unit) {
     ViviTheme(darkTheme = true, seed = Store.seed, pureBlack = Store.pureBlack) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) { content() }
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onSurface,
+        ) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) { content() }
+        }
     }
 }
 
@@ -116,6 +122,22 @@ fun main() {
 
     Store.showNowPlaying = true
     shot("now-playing") { Page { App() } }
+
+    Store.lyrics =
+        Lyrics(
+            provider = "LrcLib",
+            sync = Lyrics.Sync.LINE,
+            lines =
+                listOf(
+                    "Yeah", "I've been on my own for long enough", "Maybe you can show me how to love, maybe",
+                    "I'm going through withdrawals", "You don't even have to do too much", "You can turn me on with just a touch, baby",
+                    "I look around and Sin City's cold and empty", "No one's around to judge me",
+                ).mapIndexed { index, line -> LyricLine(timeMs = index * 4_000L, text = line) },
+        )
+    Store.showLyrics = true
+    shot("lyrics") { Page { App() } }
+    Store.showLyrics = false
+    Store.lyrics = null
     Store.showNowPlaying = false
 
     shot("album") { Page { AlbumScreen("MPREb_cC2AzCC686k") } }
