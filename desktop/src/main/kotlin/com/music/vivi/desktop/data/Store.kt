@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import com.music.innertube.YouTube
+import com.music.innertube.utils.parseCookieString
 import com.music.vivi.desktop.playback.Playback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,33 @@ object Store {
     val liked = mutableStateListOf<Track>().apply { addAll(persisted.liked) }
     val playlists = mutableStateListOf<LocalPlaylist>().apply { addAll(persisted.playlists) }
     val history = mutableStateListOf<Track>().apply { addAll(persisted.history) }
+    val plays = mutableStateListOf<PlayRecord>().apply { addAll(persisted.plays) }
+
+    var cookie by mutableStateOf(persisted.cookie)
+        private set
+    val signedIn: Boolean
+        get() = cookie?.let { parseCookieString(it) }?.let {
+            "SAPISID" in it || "__Secure-3PAPISID" in it || "__Secure-1PAPISID" in it
+        } ?: false
+
+    init {
+        if (!cookie.isNullOrBlank()) YouTube.cookie = cookie
+    }
+
+    /** Applies a YouTube cookie string (from the sign-in window or a pasted header). */
+    fun signIn(cookieValue: String) {
+        val trimmed = cookieValue.trim()
+        if (trimmed.isEmpty()) return
+        cookie = trimmed
+        YouTube.cookie = trimmed
+        save()
+    }
+
+    fun signOut() {
+        cookie = null
+        YouTube.cookie = null
+        save()
+    }
 
     var volume by mutableStateOf(persisted.volume)
     var theme by mutableStateOf(runCatching { ThemePreference.valueOf(persisted.theme) }.getOrDefault(ThemePreference.SYSTEM))
@@ -95,6 +124,9 @@ object Store {
                 radio = radio,
                 pureBlack = pureBlack,
                 searches = searches.toList(),
+                plays = plays.toList(),
+                cookie = cookie,
+                styleVersion = 2,
             ),
         )
     }
@@ -121,11 +153,19 @@ object Store {
         if (existing >= 0) history.removeAt(existing)
         history.add(0, track)
         while (history.size > 200) history.removeAt(history.lastIndex)
+        plays.add(0, PlayRecord(track, System.currentTimeMillis()))
+        while (plays.size > 2000) plays.removeAt(plays.lastIndex)
         save()
     }
 
     fun clearHistory() {
         history.clear()
+        plays.clear()
+        save()
+    }
+
+    fun removeHistoryEntry(playedAt: Long) {
+        plays.removeAll { it.playedAt == playedAt }
         save()
     }
 

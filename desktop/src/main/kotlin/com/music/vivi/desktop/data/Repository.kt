@@ -66,6 +66,52 @@ object Repository {
         }
     }
 
+    suspend fun newReleases(): Result<List<MediaCard>> = withContext(Dispatchers.IO) {
+        YouTube.newReleaseAlbums().map { albums -> albums.mapNotNull { it.toCard() } }
+    }
+
+    suspend fun moodGenres(): Result<List<MoodGenreGroup>> = withContext(Dispatchers.IO) {
+        YouTube.moodAndGenres().map { groups ->
+            groups.map { group ->
+                MoodGenreGroup(
+                    title = group.title,
+                    items =
+                        group.items.map { item ->
+                            MoodAndGenre(
+                                title = item.title,
+                                browseId = item.endpoint.browseId,
+                                params = item.endpoint.params,
+                                color = item.stripeColor,
+                            )
+                        },
+                )
+            }
+        }
+    }
+
+    suspend fun charts(): Result<List<ChartSection>> = withContext(Dispatchers.IO) {
+        YouTube.getChartsPage().map { page ->
+            page.sections.mapNotNull { section ->
+                val cards = section.items.mapNotNull { it.toCard() }
+                if (cards.isEmpty()) null else ChartSection(section.title, cards)
+            }
+        }
+    }
+
+    /** Opens any Innertube browse page (mood/genre buttons point here). */
+    suspend fun browse(browseId: String, params: String?): Result<Pair<String?, List<BrowseSection>>> =
+        withContext(Dispatchers.IO) {
+            YouTube.browse(browseId, params).map { result ->
+                result.title to
+                    result.items.map { item ->
+                        BrowseSection(
+                            title = item.title.orEmpty(),
+                            cards = item.items.mapNotNull { it.toCard() },
+                        )
+                    }
+            }
+        }
+
     suspend fun search(query: String, filter: YouTube.SearchFilter): List<MediaCard> = withContext(Dispatchers.IO) {
         YouTube.search(query, filter).getOrNull()?.items?.mapNotNull { it.toCard() }.orEmpty()
     }

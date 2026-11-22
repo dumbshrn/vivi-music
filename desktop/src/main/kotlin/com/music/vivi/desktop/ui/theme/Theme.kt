@@ -19,7 +19,7 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 
-val DefaultSeed = Color(0xFFED5564)
+val DefaultSeed = Color(0xFFC8B273)
 
 private fun style(
     family: FontFamily,
@@ -61,13 +61,15 @@ private fun viviTypography(family: FontFamily = FontFamily.Default): Typography 
 
 private fun ColorScheme.withPureBlack(): ColorScheme =
     copy(
-        surface = Color.Black,
-        surfaceContainerLowest = Color.Black,
-        surfaceContainerLow = Color(0xFF0A0A0A),
-        surfaceContainer = Color(0xFF101010),
-        surfaceContainerHigh = Color(0xFF161616),
-        surfaceContainerHighest = Color(0xFF1C1C1C),
-        background = Color.Black,
+        surface = Color(0xFF0B0B09),
+        surfaceContainerLowest = Color(0xFF000000),
+        surfaceContainerLow = Color(0xFF141310),
+        surfaceContainer = Color(0xFF1C1B16),
+        surfaceContainerHigh = Color(0xFF262419),
+        surfaceContainerHighest = Color(0xFF312F23),
+        background = Color(0xFF000000),
+        surfaceVariant = Color(0xFF2A2820),
+        onSurfaceVariant = Color(0xFFCFC8AE),
     )
 
 @Composable

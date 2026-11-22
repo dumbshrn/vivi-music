@@ -16,10 +16,25 @@ object Prefs {
     private val file: Path = directory.resolve("library.json")
 
     fun load(): PersistedState {
-        return runCatching {
-            if (!Files.exists(file)) return PersistedState()
-            json.decodeFromString<PersistedState>(Files.readString(file))
-        }.getOrElse { PersistedState() }
+        val loaded =
+            runCatching {
+                if (!Files.exists(file)) return PersistedState()
+                json.decodeFromString<PersistedState>(Files.readString(file))
+            }.getOrElse { PersistedState() }
+
+        // Version 1 shipped the old red seed with a light/system theme. Existing
+        // installs are moved onto the app's warm black + gold look once.
+        return if (loaded.styleVersion < 2) {
+            loaded.copy(
+                theme = ThemePreference.DARK.name,
+                dynamicColors = false,
+                seed = 0xFFC8B273,
+                pureBlack = true,
+                styleVersion = 2,
+            )
+        } else {
+            loaded
+        }
     }
 
     fun save(state: PersistedState) {

@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
 import com.music.vivi.desktop.data.Route
 import com.music.vivi.desktop.data.Store
+import com.music.vivi.desktop.data.Track
 import com.music.vivi.desktop.ui.App
 import com.music.vivi.desktop.ui.screens.AlbumScreen
 import com.music.vivi.desktop.ui.screens.ArtistScreen
@@ -32,7 +33,7 @@ private fun shot(
     val scene = ImageComposeScene(width = width, height = height, density = Density(1f), content = content)
     var image = scene.render(0)
     // Pump a few frames so async content and animations settle.
-    repeat(120) { frame ->
+    repeat(140) { frame ->
         Thread.sleep(40)
         image = scene.render(frame * 40_000_000L)
     }
@@ -46,7 +47,7 @@ private fun shot(
 
 @Composable
 private fun Page(content: @Composable () -> Unit) {
-    ViviTheme(darkTheme = true) {
+    ViviTheme(darkTheme = true, seed = Store.seed, pureBlack = Store.pureBlack) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) { content() }
     }
 }
@@ -55,39 +56,70 @@ fun main() {
     System.setProperty("skiko.renderApi", "SOFTWARE")
     DesktopInit.initialize()
 
-    shot("home") { Page { App() } }
-    shot("home-light") { ViviTheme(darkTheme = false) { App() } }
+    val demo =
+        Track(
+            id = "J7p4bzqLvCw",
+            title = "Blinding Lights",
+            artists = listOf("The Weeknd"),
+            album = "After Hours",
+            duration = 200,
+            thumbnail = "https://i.ytimg.com/vi/4NRXx6U8ABQ/hqdefault.jpg",
+        )
+    Store.queue.clear()
+    Store.queue.add(demo)
+    Store.index = 0
+    Store.durationMs = 200_000
+    Store.positionMs = 68_000
 
-    shot("album") { Page { AlbumScreen("MPREb_cC2AzCC686k") } }
-    shot("artist") { Page { ArtistScreen("UClYV6hHlupm_S_ObS1W-DYw") } }
+    shot("home") { Page { App() } }
+
+    Store.navigate(Route.Explore)
+    shot("explore") { Page { App() } }
+    Store.back()
+
+    Store.navigate(Route.Library)
+    shot("library") { Page { App() } }
+    Store.back()
 
     Store.navigate(Route.Search)
     Store.searchQuery = "the weeknd"
     shot("search") { Page { App() } }
     Store.back()
 
-    Store.queue.clear()
-    Store.queue.add(
-        com.music.vivi.desktop.data.Track(
-            id = "J7p4bzqLvCw",
-            title = "Blinding Lights",
-            artists = listOf("The Weeknd"),
-            album = "After Hours",
-            duration = 200,
-            thumbnail = "https://lh3.googleusercontent.com/0u4N8hF0Vf3jR8m0Zl7c1L8Oq3w_KkO7n3d2f5B8Y1s=w544-h544-l90-rj",
-        ),
-    )
-    Store.index = 0
-    Store.durationMs = 200_000
+    Store.navigate(Route.Settings)
+    shot("settings") { Page { App() } }
+    Store.back()
+
+    Store.navigate(Route.Account)
+    shot("account") { Page { App() } }
+    Store.back()
+
+    Store.navigate(Route.History)
+    shot("history") { Page { App() } }
+    Store.back()
+
+    Store.navigate(Route.Stats)
+    shot("stats") { Page { App() } }
+    Store.back()
+
+    Store.navigate(Route.Charts)
+    shot("charts") { Page { App() } }
+    Store.back()
+
+    Store.navigate(Route.MoodGenres)
+    shot("moods") { Page { App() } }
+    Store.back()
+
+    Store.navigate(Route.NewReleases)
+    shot("new-releases") { Page { App() } }
+    Store.back()
+
     Store.showNowPlaying = true
     shot("now-playing") { Page { App() } }
     Store.showNowPlaying = false
 
-    Store.navigate(Route.Library)
-    shot("library") { Page { App() } }
-
-    Store.navigate(Route.Settings)
-    shot("settings") { Page { App() } }
+    shot("album") { Page { AlbumScreen("MPREb_cC2AzCC686k") } }
+    shot("artist") { Page { ArtistScreen("UClYV6hHlupm_S_ObS1W-DYw") } }
 
     println("done")
 }

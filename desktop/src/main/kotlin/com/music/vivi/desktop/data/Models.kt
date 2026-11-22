@@ -134,6 +134,15 @@ data class HomeFeed(val chips: List<HomeChip>, val sections: List<UiSection>) {
 
 data class MoodAndGenre(val title: String, val browseId: String?, val params: String?, val color: Long?)
 
+/** A titled group of mood/genre buttons, as returned by `FEmusic_moods_and_genres`. */
+data class MoodGenreGroup(val title: String, val items: List<MoodAndGenre>)
+
+/** One charts shelf (Trending, Top songs, Top music videos…). */
+data class ChartSection(val title: String, val cards: List<MediaCard>)
+
+/** One section of a browse page opened from a mood/genre button. */
+data class BrowseSection(val title: String, val cards: List<MediaCard>)
+
 data class AlbumDetails(val album: AlbumItem, val songs: List<Track>, val description: String?)
 
 data class ArtistDetails(
@@ -158,11 +167,22 @@ sealed interface Route {
     data object Search : Route
     data object Library : Route
     data object Settings : Route
+    data object History : Route
+    data object Stats : Route
+    data object Charts : Route
+    data object MoodGenres : Route
+    data object NewReleases : Route
+    data object Account : Route
+    data class Browse(val browseId: String, val params: String?, val title: String) : Route
     data class Album(val id: String) : Route
     data class Artist(val id: String) : Route
     data class Playlist(val id: String) : Route
     data class LocalPlaylist(val id: String) : Route
 }
+
+/** One playback event, kept so history and listening stats can be time-filtered. */
+@Serializable
+data class PlayRecord(val track: Track, val playedAt: Long)
 
 @Serializable
 data class LocalPlaylist(
@@ -184,12 +204,15 @@ data class PersistedState(
     val playlists: List<LocalPlaylist> = emptyList(),
     val history: List<Track> = emptyList(),
     val volume: Float = 0.85f,
-    val theme: String = ThemePreference.SYSTEM.name,
-    val dynamicColors: Boolean = true,
-    val seed: Long = 0xFFED5564,
+    val theme: String = ThemePreference.DARK.name,
+    val dynamicColors: Boolean = false,
+    val seed: Long = 0xFFC8B273,
     val quality: String = AudioQuality.HIGH.name,
     val providers: List<String> = listOf("Musixmatch", "LrcLib", "Unison", "Better Lyrics", "YouLyPlus"),
     val radio: Boolean = true,
-    val pureBlack: Boolean = false,
+    val pureBlack: Boolean = true,
     val searches: List<String> = emptyList(),
+    val plays: List<PlayRecord> = emptyList(),
+    val cookie: String? = null,
+    val styleVersion: Int = 2,
 )

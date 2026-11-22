@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,19 +17,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.FiberNew
+import androidx.compose.material.icons.rounded.Mood
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -46,8 +43,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,15 +54,11 @@ import com.music.vivi.desktop.data.MoodAndGenre
 import com.music.vivi.desktop.data.Repository
 import com.music.vivi.desktop.data.Route
 import com.music.vivi.desktop.data.Store
-import com.music.vivi.desktop.data.Track
 import com.music.vivi.desktop.data.UiSection
-import com.music.vivi.desktop.ui.CoverArt
 import com.music.vivi.desktop.ui.NavigationTitle
-import com.music.vivi.desktop.ui.QuickPicksRow
 import com.music.vivi.desktop.ui.SectionRow
-import com.music.vivi.desktop.ui.SpeedDialTile
-import com.music.vivi.desktop.ui.TrackRow
-import java.time.LocalTime
+import com.music.vivi.desktop.ui.SongShelf
+import com.music.vivi.desktop.ui.SpeedDialPager
 
 @Composable
 fun HomeScreen() {
@@ -92,7 +83,7 @@ fun HomeScreen() {
         loading = true
         Repository.homeChip(chip.params)
             .onSuccess { feed = it }
-            .onFailure { Store.notify("Could not load ${chip.title}") }
+            .onFailure { Store.notify("Could not load " + chip.title) }
         loading = false
     }
 
@@ -112,10 +103,10 @@ fun HomeScreen() {
                     data.sections.filterNot { section ->
                         section === quickPicksSection || (quickPicksSection == null && section === firstSongSection)
                     }
-                val speedDial = speedDialCards()
+                val speedDial = speedDialCards(data.sections)
 
                 LazyColumn(
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 28.dp),
+                    contentPadding = PaddingValues(top = 2.dp, bottom = 32.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     if (data.chips.isNotEmpty()) {
@@ -133,7 +124,9 @@ fun HomeScreen() {
 
                     if (speedDial.isNotEmpty()) {
                         item { NavigationTitle(title = "Speed dial") }
-                        item { SpeedDialGrid(speedDial) }
+                        item {
+                            SpeedDialPager(speedDial) { card -> openCard(card) }
+                        }
                     }
 
                     if (quickPicks.isNotEmpty()) {
@@ -143,12 +136,19 @@ fun HomeScreen() {
                                 onPlayAll = { Store.play(quickPicks) },
                             )
                         }
-                        item { QuickPicksRow(quickPicks) }
+                        item { SongShelf(quickPicks, scope) }
                     }
 
-                    items(remainingSections, key = { it.title + it.cards.size }) { section ->
+                    items(remainingSections.size) { index ->
+                        val section = remainingSections[index]
                         if (section.cards.all { it is MediaCard.SongCard }) {
-                            SongSection(section, scope)
+                            val tracks = section.cards.mapNotNull { (it as? MediaCard.SongCard)?.track }
+                            NavigationTitle(
+                                title = section.title.ifBlank { "Songs" },
+                                label = section.label,
+                                onPlayAll = { Store.play(tracks) },
+                            )
+                            SongShelf(tracks, scope)
                         } else {
                             SectionRow(section) { card -> openCard(card) }
                         }
@@ -156,38 +156,10 @@ fun HomeScreen() {
                 }
 
                 if (loading) {
-                    Box(
-                        Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    Box(Modifier.align(Alignment.TopCenter).padding(top = 8.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SongSection(section: UiSection, scope: kotlinx.coroutines.CoroutineScope) {
-    val tracks = section.cards.mapNotNull { (it as? MediaCard.SongCard)?.track }
-    if (tracks.isEmpty()) return
-    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        NavigationTitle(
-            title = section.title.ifBlank { "Songs" },
-            label = section.label,
-            onPlayAll = { Store.play(tracks) },
-        )
-        tracks.take(8).forEachIndexed { index, track ->
-            Box(Modifier.padding(horizontal = 16.dp)) {
-                TrackRow(
-                    track = track,
-                    index = index,
-                    queue = tracks,
-                    showArtwork = true,
-                    showAlbum = false,
-                    scope = scope,
-                )
             }
         }
     }
@@ -199,47 +171,26 @@ private fun ChipsRow(chips: List<HomeChip>, selected: HomeChip?, onSelect: (Home
         Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         chips.distinctBy { it.title }.forEach { chip ->
             FilterChip(
                 selected = selected?.title == chip.title,
                 onClick = { onSelect(chip) },
                 label = { Text(chip.title) },
-                shape = RoundedCornerShape(if (selected?.title == chip.title) 20.dp else 8.dp),
+                shape = RoundedCornerShape(12.dp),
                 border = null,
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                 ),
             )
         }
     }
 }
 
-@Composable
-private fun SpeedDialGrid(cards: List<MediaCard>) {
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-        val columns = (maxWidth / 150.dp).toInt().coerceIn(3, 8)
-        val limited = cards.take(columns * 2)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            limited.chunked(columns).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    row.forEach { card ->
-                        SpeedDialTile(
-                            card = card,
-                            onClick = { openCard(card) },
-                            modifier = Modifier.weight(1f).aspectRatio(1f),
-                        )
-                    }
-                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-        }
-    }
-}
-
-private fun speedDialCards(): List<MediaCard> {
+private fun speedDialCards(sections: List<UiSection>): List<MediaCard> {
     val albums =
         Store.history.mapNotNull { track ->
             val albumId = track.albumId ?: return@mapNotNull null
@@ -252,20 +203,19 @@ private fun speedDialCards(): List<MediaCard> {
                 playlistId = "",
             )
         }.distinctBy { it.browseId }
-    val playlists =
-        Store.playlists.map { playlist ->
-            MediaCard.Playlist(
-                browseId = playlist.id,
-                title = playlist.name,
-                thumbnail = playlist.tracks.firstOrNull()?.thumbnail.orEmpty(),
-                author = "${playlist.tracks.size} songs",
-            )
-        }
-    val liked =
-        Store.liked.take(2).map { track ->
-            MediaCard.SongCard(browseId = track.id, title = track.title, thumbnail = track.thumbnail, track = track)
-        }
-    return (albums + playlists + liked).take(16)
+    val playlists = Store.playlists.map { playlist ->
+        MediaCard.Playlist(
+            browseId = playlist.id,
+            title = playlist.name,
+            thumbnail = playlist.tracks.firstOrNull()?.thumbnail.orEmpty(),
+            author = playlist.tracks.size.toString() + " songs",
+        )
+    }
+    val liked = Store.liked.take(4).map { track ->
+        MediaCard.SongCard(browseId = track.id, title = track.title, thumbnail = track.thumbnail, track = track)
+    }
+    val fromFeed = sections.flatMap { it.cards }.filter { it !is MediaCard.SongCard }
+    return (albums + playlists + fromFeed + liked).filter { it.thumbnail.isNotBlank() }.take(16)
 }
 
 @Composable
@@ -290,20 +240,32 @@ fun ExploreScreen() {
         error != null -> ErrorState(error!!) { token += 1 }
         sections == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         else -> {
-            LazyColumn(contentPadding = PaddingValues(bottom = 28.dp)) {
+            LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
                 item {
-                    Text(
-                        "Explore",
-                        style = MaterialTheme.typography.displaySmall,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                    )
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ExploreShortcut("Charts", "Top songs and videos", Icons.Rounded.BarChart, Modifier.weight(1f)) {
+                            Store.navigate(Route.Charts)
+                        }
+                        ExploreShortcut("New releases", "Fresh albums", Icons.Rounded.FiberNew, Modifier.weight(1f)) {
+                            Store.navigate(Route.NewReleases)
+                        }
+                        ExploreShortcut("Mood and Genres", "Browse everything", Icons.Rounded.Mood, Modifier.weight(1f)) {
+                            Store.navigate(Route.MoodGenres)
+                        }
+                    }
                 }
+
                 if (moods.isNotEmpty()) {
-                    item { NavigationTitle(title = "Moods & genres") }
+                    item {
+                        NavigationTitle(title = "Mood and Genres") { Store.navigate(Route.MoodGenres) }
+                    }
                     item { MoodGrid(moods) }
                 }
-                items(sections.orEmpty(), key = { it.title }) { section ->
-                    SectionRow(section) { card -> openCard(card) }
+                items(sections.orEmpty().size) { index ->
+                    SectionRow(sections.orEmpty()[index]) { card -> openCard(card) }
                 }
             }
         }
@@ -311,27 +273,68 @@ fun ExploreScreen() {
 }
 
 @Composable
+private fun ExploreShortcut(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.clickable(onClick = onClick),
+    ) {
+        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Rounded.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun MoodGrid(moods: List<MoodAndGenre>) {
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        val columns = (maxWidth / 210.dp).toInt().coerceIn(2, 5)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        val columns = (maxWidth / 240.dp).toInt().coerceIn(2, 5)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             moods.chunked(columns).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     row.forEach { mood ->
-                        val tint = mood.color?.let { Color(0xFF000000L or (it and 0xFFFFFFL)) }
-                            ?: MaterialTheme.colorScheme.secondaryContainer
+                        val tint =
+                            mood.color?.let { Color(0xFF000000L or (it and 0xFFFFFFL)) }
+                                ?: MaterialTheme.colorScheme.surfaceContainer
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             color = tint,
                             modifier = Modifier
                                 .weight(1f)
-                                .height(54.dp)
+                                .height(56.dp)
                                 .clickable {
-                                    Store.searchQuery = mood.title
-                                    Store.navigate(Route.Search)
+                                    if (mood.browseId != null) {
+                                        Store.navigate(Route.Browse(mood.browseId, mood.params, mood.title))
+                                    } else {
+                                        Store.searchQuery = mood.title
+                                        Store.navigate(Route.Search)
+                                    }
                                 },
                         ) {
-                            Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
+                            Box(Modifier.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
                                 Text(
                                     mood.title,
                                     style = MaterialTheme.typography.titleSmall,

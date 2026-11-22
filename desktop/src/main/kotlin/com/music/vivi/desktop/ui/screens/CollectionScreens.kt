@@ -41,8 +41,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.music.vivi.desktop.data.AlbumDetails
@@ -67,77 +69,78 @@ private fun CollectionHero(
     extra: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
-    Box(
+    val tint = colors.primary
+    Column(
         Modifier
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    listOf(
-                        colors.primaryContainer.copy(alpha = 0.75f),
-                        colors.tertiaryContainer.copy(alpha = 0.45f),
-                        colors.surface,
-                    ),
+                    0f to tint.copy(alpha = 0.55f),
+                    0.5f to tint.copy(alpha = 0.14f),
+                    1f to colors.surface,
                 ),
-            ),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            CoverArt(
-                artwork,
-                200.dp,
-                if (round) CircleShape else RoundedCornerShape(8.dp),
             )
-            Spacer(Modifier.width(24.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Button(
-                        onClick = { if (tracks.isNotEmpty()) Store.play(tracks) },
-                        shape = CircleShape,
-                        enabled = tracks.isNotEmpty(),
-                    ) {
-                        Icon(Icons.Rounded.PlayArrow, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Play")
-                    }
-                    FilledTonalButton(
-                        onClick = {
-                            if (tracks.isNotEmpty()) {
-                                Store.shuffle = true
-                                Store.play(tracks.shuffled())
-                            }
-                        },
-                        shape = CircleShape,
-                        enabled = tracks.isNotEmpty(),
-                    ) {
-                        Icon(Icons.Rounded.Shuffle, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Shuffle")
-                    }
-                    extra()
-                }
-            }
+            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        val shape = if (round) CircleShape else RoundedCornerShape(14.dp)
+        CoverArt(
+            artwork,
+            220.dp,
+            shape,
+            modifier = Modifier.shadow(26.dp, shape),
+        )
+        Spacer(Modifier.height(22.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (subtitle.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
+        Spacer(Modifier.height(18.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(
+                onClick = { if (tracks.isNotEmpty()) Store.play(tracks) },
+                shape = CircleShape,
+                enabled = tracks.isNotEmpty(),
+            ) {
+                Icon(Icons.Rounded.PlayArrow, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Play")
+            }
+            FilledTonalButton(
+                onClick = {
+                    if (tracks.isNotEmpty()) {
+                        Store.shuffle = true
+                        Store.play(tracks.shuffled())
+                    }
+                },
+                shape = CircleShape,
+                enabled = tracks.isNotEmpty(),
+            ) {
+                Icon(Icons.Rounded.Shuffle, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Shuffle")
+            }
+            extra()
+        }
+        Spacer(Modifier.height(6.dp))
     }
 }
 
