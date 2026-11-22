@@ -89,6 +89,21 @@ fun SettingsScreen() {
                 Switch(checked = Store.dynamicColors, onCheckedChange = { Store.applyDynamicColors(it) })
             }
 
+            Row(
+                Modifier.fillMaxWidth().padding(top = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Pure black", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "OLED-friendly true black surfaces in dark mode",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = Store.pureBlack, onCheckedChange = { Store.togglePureBlack() })
+            }
+
             Text("Seed color", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
             Row(
                 Modifier.padding(top = 8.dp),

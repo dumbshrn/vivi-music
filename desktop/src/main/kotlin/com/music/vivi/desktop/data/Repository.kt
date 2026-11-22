@@ -4,6 +4,7 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
 import com.music.innertube.models.YouTubeClient
+import com.music.innertube.pages.HomePage
 import com.music.kugou.KuGou
 import com.music.lrclib.LrcLib
 import com.music.unison.Unison
@@ -14,41 +15,54 @@ import kotlinx.coroutines.withContext
 
 /** Network facade over the app's own Innertube + lyrics provider modules. */
 object Repository {
-    private fun List<YTItem>.toSections(): List<UiSection> {
-        val cards = mapNotNull { it.toCard() }
-        if (cards.isEmpty()) return emptyList()
-        return listOf(UiSection("", cards))
-    }
-
-    suspend fun home(): Result<List<UiSection>> = withContext(Dispatchers.IO) {
-        YouTube.home().map { page ->
-            page.sections.mapNotNull { section ->
+    private fun HomePage.toFeed(): HomeFeed {
+        val sections =
+            this.sections.mapNotNull { section ->
                 val cards = section.items.mapNotNull { it.toCard() }
-                if (cards.isEmpty()) null else UiSection(section.title, cards)
+                if (cards.isEmpty()) return@mapNotNull null
+                UiSection(
+                    title = section.title,
+                    cards = cards,
+                    label = section.label,
+                    thumbnail = section.thumbnail,
+                )
             }
-        }
+        val chips =
+            this.chips.orEmpty().map { chip ->
+                HomeChip(
+                    title = chip.title,
+                    browseId = chip.endpoint?.browseId,
+                    params = chip.endpoint?.params,
+                    deselectParams = chip.deselectEndPoint?.params,
+                )
+            }
+        return HomeFeed(chips, sections)
     }
 
-    suspend fun explore(): Result<List<UiSection>> = withContext(Dispatchers.IO) {
+    suspend fun home(): Result<HomeFeed> = withContext(Dispatchers.IO) {
+        YouTube.home().map { it.toFeed() }
+    }
+
+    /** Loads a home feed for a selected mood/genre chip. */
+    suspend fun homeChip(params: String?): Result<HomeFeed> = withContext(Dispatchers.IO) {
+        YouTube.home(params = params).map { it.toFeed() }
+    }
+
+    suspend fun explore(): Result<Pair<List<UiSection>, List<MoodAndGenre>>> = withContext(Dispatchers.IO) {
         YouTube.explore().map { page ->
-            val sections = mutableListOf<UiSection>()
             val albums = page.newReleaseAlbums.mapNotNull { it.toCard() }
-            if (albums.isNotEmpty()) sections += UiSection("New releases", albums)
-            if (page.moodAndGenres.isNotEmpty()) {
-                sections +=
-                    UiSection(
-                        "Moods & genres",
-                        page.moodAndGenres.map { mood ->
-                            MediaCard.Playlist(
-                                browseId = mood.endpoint.browseId ?: "",
-                                title = mood.title,
-                                thumbnail = "",
-                                author = "Mood & genre",
-                            )
-                        },
+            val sections =
+                if (albums.isEmpty()) emptyList() else listOf(UiSection("New releases", albums))
+            val moods =
+                page.moodAndGenres.map { mood ->
+                    MoodAndGenre(
+                        title = mood.title,
+                        browseId = mood.endpoint.browseId,
+                        params = mood.endpoint.params,
+                        color = mood.stripeColor,
                     )
-            }
-            sections
+                }
+            sections to moods
         }
     }
 
@@ -56,20 +70,18 @@ object Repository {
         YouTube.search(query, filter).getOrNull()?.items?.mapNotNull { it.toCard() }.orEmpty()
     }
 
+    suspend fun searchSuggestions(query: String): List<String> = withContext(Dispatchers.IO) {
+        YouTube.searchSuggestions(query).getOrNull()?.queries.orEmpty().take(8)
+    }
+
     suspend fun searchAll(query: String): List<UiSection> = withContext(Dispatchers.IO) {
-        val groups =
-            listOf(
-                "Songs" to YouTube.SearchFilter.FILTER_SONG,
-                "Albums" to YouTube.SearchFilter.FILTER_ALBUM,
-                "Artists" to YouTube.SearchFilter.FILTER_ARTIST,
-                "Playlists" to YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST,
-                "Videos" to YouTube.SearchFilter.FILTER_VIDEO,
-            )
-        groups.mapNotNull { (title, filter) ->
-            val cards =
-                YouTube.search(query, filter).getOrNull()?.items?.mapNotNull { it.toCard() }.orEmpty()
-            if (cards.isEmpty()) null else UiSection(title, cards)
-        }
+        SearchCategory.entries
+            .filter { it.filter != null }
+            .mapNotNull { category ->
+                val filter = category.filter ?: return@mapNotNull null
+                val cards = YouTube.search(query, filter).getOrNull()?.items?.mapNotNull { it.toCard() }.orEmpty()
+                if (cards.isEmpty()) null else UiSection(category.label, cards)
+            }
     }
 
     suspend fun album(browseId: String): Result<AlbumDetails> = withContext(Dispatchers.IO) {
@@ -85,12 +97,19 @@ object Repository {
                     val cards = section.items.mapNotNull { it.toCard() }
                     if (cards.isEmpty()) null else UiSection(section.title, cards)
                 }
+            val topSongs =
+                page.sections
+                    .firstOrNull { it.title.contains("song", ignoreCase = true) || it.items.all { item -> item is com.music.innertube.models.SongItem } }
+                    ?.items
+                    ?.mapNotNull { (it as? com.music.innertube.models.SongItem)?.toTrack() }
+                    .orEmpty()
             ArtistDetails(
                 artist = page.artist,
-                sections = sections,
-                topSongs = page.sections.firstOrNull()?.items?.mapNotNull { (it as? com.music.innertube.models.SongItem)?.toTrack() }.orEmpty(),
+                sections = sections.filterNot { it.title.contains("song", ignoreCase = true) },
+                topSongs = topSongs,
                 subscriberCount = page.subscriberCountText,
                 monthlyListeners = page.monthlyListenerCount,
+                description = page.description,
             )
         }
     }
@@ -101,6 +120,7 @@ object Repository {
                 playlist = page.playlist,
                 songs = page.songs.map { it.toTrack() },
                 related = page.related?.mapNotNull { it.toCard() }.orEmpty(),
+                relatedTitle = page.relatedTitle,
             )
         }
     }
@@ -202,4 +222,14 @@ object Repository {
 
         Lyrics(provider = "", sync = Lyrics.Sync.NONE, lines = emptyList(), plain = true)
     }
+}
+
+/** Search result tabs, mirroring the app's filter chips. */
+enum class SearchCategory(val label: String, val filter: YouTube.SearchFilter?) {
+    ALL("All", null),
+    SONGS("Songs", YouTube.SearchFilter.FILTER_SONG),
+    ALBUMS("Albums", YouTube.SearchFilter.FILTER_ALBUM),
+    ARTISTS("Artists", YouTube.SearchFilter.FILTER_ARTIST),
+    PLAYLISTS("Playlists", YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST),
+    VIDEOS("Videos", YouTube.SearchFilter.FILTER_VIDEO),
 }

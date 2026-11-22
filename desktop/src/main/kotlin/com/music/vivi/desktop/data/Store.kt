@@ -37,7 +37,8 @@ object Store {
     val providers = mutableStateListOf<String>().apply { addAll(persisted.providers) }
     var radio by mutableStateOf(persisted.radio)
     var artSeed by mutableStateOf<Color?>(null)
-    var pureBlack by mutableStateOf(false)
+    var pureBlack by mutableStateOf(persisted.pureBlack)
+    val searches = mutableStateListOf<String>().apply { addAll(persisted.searches) }
 
     val queue = mutableStateListOf<Track>()
     var index by mutableStateOf(-1)
@@ -92,6 +93,8 @@ object Store {
                 quality = quality.name,
                 providers = providers.toList(),
                 radio = radio,
+                pureBlack = pureBlack,
+                searches = searches.toList(),
             ),
         )
     }
@@ -118,6 +121,11 @@ object Store {
         if (existing >= 0) history.removeAt(existing)
         history.add(0, track)
         while (history.size > 200) history.removeAt(history.lastIndex)
+        save()
+    }
+
+    fun clearHistory() {
+        history.clear()
         save()
     }
 
@@ -390,6 +398,30 @@ object Store {
 
     fun toggleRadio() {
         radio = !radio
+        save()
+    }
+
+    fun togglePureBlack() {
+        pureBlack = !pureBlack
+        save()
+    }
+
+    fun addSearch(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return
+        searches.removeAll { it.equals(trimmed, ignoreCase = true) }
+        searches.add(0, trimmed)
+        while (searches.size > 12) searches.removeAt(searches.lastIndex)
+        save()
+    }
+
+    fun removeSearch(query: String) {
+        searches.removeAll { it == query }
+        save()
+    }
+
+    fun clearSearches() {
+        searches.clear()
         save()
     }
 

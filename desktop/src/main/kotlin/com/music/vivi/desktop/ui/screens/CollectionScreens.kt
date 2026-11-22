@@ -1,5 +1,6 @@
 package com.music.vivi.desktop.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,12 +51,14 @@ import com.music.vivi.desktop.data.PlaylistDetails
 import com.music.vivi.desktop.data.Repository
 import com.music.vivi.desktop.data.Store
 import com.music.vivi.desktop.data.Track
+import com.music.vivi.desktop.data.UiSection
 import com.music.vivi.desktop.ui.CoverArt
+import com.music.vivi.desktop.ui.NavigationTitle
 import com.music.vivi.desktop.ui.SectionRow
 import com.music.vivi.desktop.ui.TrackRow
 
 @Composable
-private fun CollectionHeader(
+private fun CollectionHero(
     artwork: String,
     title: String,
     subtitle: String,
@@ -62,58 +66,76 @@ private fun CollectionHeader(
     round: Boolean = false,
     extra: @Composable () -> Unit = {},
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 20.dp),
-        verticalAlignment = Alignment.Bottom,
+    val colors = MaterialTheme.colorScheme
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        colors.primaryContainer.copy(alpha = 0.75f),
+                        colors.tertiaryContainer.copy(alpha = 0.45f),
+                        colors.surface,
+                    ),
+                ),
+            ),
     ) {
-        CoverArt(
-            artwork,
-            216.dp,
-            if (round) CircleShape else RoundedCornerShape(20.dp),
-        )
-        Spacer(Modifier.width(26.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            CoverArt(
+                artwork,
+                200.dp,
+                if (round) CircleShape else RoundedCornerShape(8.dp),
             )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(18.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    onClick = { if (tracks.isNotEmpty()) Store.play(tracks) },
-                    shape = CircleShape,
-                    enabled = tracks.isNotEmpty(),
+            Spacer(Modifier.width(24.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Rounded.PlayArrow, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Play")
+                    Button(
+                        onClick = { if (tracks.isNotEmpty()) Store.play(tracks) },
+                        shape = CircleShape,
+                        enabled = tracks.isNotEmpty(),
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Play")
+                    }
+                    FilledTonalButton(
+                        onClick = {
+                            if (tracks.isNotEmpty()) {
+                                Store.shuffle = true
+                                Store.play(tracks.shuffled())
+                            }
+                        },
+                        shape = CircleShape,
+                        enabled = tracks.isNotEmpty(),
+                    ) {
+                        Icon(Icons.Rounded.Shuffle, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Shuffle")
+                    }
+                    extra()
                 }
-                FilledTonalButton(
-                    onClick = {
-                        if (tracks.isNotEmpty()) {
-                            Store.shuffle = true
-                            Store.play(tracks.shuffled())
-                        }
-                    },
-                    shape = CircleShape,
-                    enabled = tracks.isNotEmpty(),
-                ) {
-                    Icon(Icons.Rounded.Shuffle, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Shuffle")
-                }
-                extra()
             }
         }
     }
@@ -132,6 +154,16 @@ private fun LoadingOrError(loading: Boolean, error: String?, onRetry: () -> Unit
             }
         }
     }
+}
+
+private fun metaLine(vararg parts: String?): String = parts.filterNotNull().filter { it.isNotBlank() }.joinToString(" • ")
+
+private fun totalDuration(tracks: List<Track>): String {
+    val seconds = tracks.sumOf { it.duration }
+    if (seconds <= 0) return ""
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    return if (hours > 0) "${hours} hr ${minutes} min" else "${minutes} min"
 }
 
 @Composable
@@ -159,20 +191,32 @@ fun AlbumScreen(browseId: String) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
-            CollectionHeader(
+            CollectionHero(
                 artwork = album.album.thumbnail,
                 title = album.album.title,
-                subtitle =
-                    listOfNotNull(
-                        album.album.artists?.joinToString(", ") { it.name }?.ifBlank { null },
-                        album.album.year?.toString(),
-                        "${album.songs.size} songs",
-                    ).joinToString(" • "),
+                subtitle = metaLine(
+                    album.album.artists?.joinToString(", ") { it.name },
+                    album.album.year?.toString(),
+                    "${album.songs.size} songs",
+                    totalDuration(album.songs),
+                ),
                 tracks = album.songs,
             )
         }
+        if (!album.description.isNullOrBlank()) {
+            item {
+                Text(
+                    album.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
+        }
         itemsIndexed(album.songs, key = { index, track -> "${track.id}-$index" }) { index, track ->
-            Box(Modifier.padding(horizontal = 20.dp)) {
+            Box(Modifier.padding(horizontal = 16.dp)) {
                 TrackRow(
                     track = track,
                     index = index,
@@ -210,27 +254,35 @@ fun ArtistScreen(browseId: String) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
-            CollectionHeader(
+            CollectionHero(
                 artwork = artist.artist.thumbnail.orEmpty(),
                 title = artist.artist.title,
-                subtitle =
-                    listOfNotNull(artist.monthlyListeners, artist.subscriberCount)
-                        .joinToString(" • ")
-                        .ifBlank { "Artist" },
+                subtitle = metaLine(artist.monthlyListeners, artist.subscriberCount).ifBlank { "Artist" },
                 tracks = artist.topSongs,
                 round = true,
             )
         }
-        if (artist.topSongs.isNotEmpty()) {
+        if (!artist.description.isNullOrBlank()) {
             item {
                 Text(
-                    "Top songs",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 10.dp),
+                    artist.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
+        }
+        if (artist.topSongs.isNotEmpty()) {
+            item {
+                NavigationTitle(
+                    title = "Top songs",
+                    onPlayAll = { Store.play(artist.topSongs) },
                 )
             }
             itemsIndexed(artist.topSongs, key = { index, track -> "${track.id}-$index" }) { index, track ->
-                Box(Modifier.padding(horizontal = 20.dp)) {
+                Box(Modifier.padding(horizontal = 16.dp)) {
                     TrackRow(
                         track = track,
                         index = index,
@@ -273,19 +325,19 @@ fun PlaylistScreen(playlistId: String) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
-            CollectionHeader(
+            CollectionHero(
                 artwork = playlist.playlist.thumbnail.orEmpty(),
                 title = playlist.playlist.title,
-                subtitle =
-                    listOfNotNull(
-                        playlist.playlist.author?.name,
-                        "${playlist.songs.size} songs",
-                    ).joinToString(" • "),
+                subtitle = metaLine(
+                    playlist.playlist.author?.name,
+                    "${playlist.songs.size} songs",
+                    totalDuration(playlist.songs),
+                ),
                 tracks = playlist.songs,
             )
         }
         itemsIndexed(playlist.songs, key = { index, track -> "${track.id}-$index" }) { index, track ->
-            Box(Modifier.padding(horizontal = 20.dp)) {
+            Box(Modifier.padding(horizontal = 16.dp)) {
                 TrackRow(
                     track = track,
                     index = index,
@@ -296,8 +348,12 @@ fun PlaylistScreen(playlistId: String) {
                 )
             }
         }
-        items(playlist.related.size) { index ->
-            SectionRow(com.music.vivi.desktop.data.UiSection("More like this", playlist.related)) { card -> openCard(card) }
+        if (playlist.related.isNotEmpty()) {
+            item {
+                SectionRow(
+                    UiSection(playlist.relatedTitle ?: "You might also like", playlist.related),
+                ) { card -> openCard(card) }
+            }
         }
     }
 }
@@ -317,13 +373,19 @@ fun LocalPlaylistScreen(playlistId: String) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
-            CollectionHeader(
+            CollectionHero(
                 artwork = playlist.tracks.firstOrNull()?.thumbnail.orEmpty(),
                 title = playlist.name,
-                subtitle = "${playlist.tracks.size} songs",
+                subtitle = metaLine(
+                    "${playlist.tracks.size} songs",
+                    totalDuration(playlist.tracks),
+                ),
                 tracks = playlist.tracks,
                 extra = {
-                    IconButton(onClick = { renaming = true; name = playlist.name }) {
+                    IconButton(onClick = {
+                        renaming = true
+                        name = playlist.name
+                    }) {
                         Icon(Icons.Rounded.Edit, contentDescription = "Rename")
                     }
                     IconButton(onClick = { confirmingDelete = true }) {
@@ -334,7 +396,7 @@ fun LocalPlaylistScreen(playlistId: String) {
         }
         if (playlist.tracks.isEmpty()) {
             item {
-                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
                     Text(
                         "Add songs from any track menu.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -343,7 +405,7 @@ fun LocalPlaylistScreen(playlistId: String) {
             }
         }
         itemsIndexed(playlist.tracks, key = { index, track -> "${track.id}-$index" }) { index, track ->
-            Box(Modifier.padding(horizontal = 20.dp)) {
+            Box(Modifier.padding(horizontal = 16.dp)) {
                 TrackRow(
                     track = track,
                     index = index,

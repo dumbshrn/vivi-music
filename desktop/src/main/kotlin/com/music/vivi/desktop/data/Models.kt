@@ -111,7 +111,28 @@ data class Lyrics(
     enum class Sync { WORD, LINE, NONE }
 }
 
-data class UiSection(val title: String, val cards: List<MediaCard>)
+data class UiSection(
+    val title: String,
+    val cards: List<MediaCard>,
+    val label: String? = null,
+    val thumbnail: String? = null,
+)
+
+/** A home mood/genre chip returned by YouTube Music's home feed. */
+data class HomeChip(
+    val title: String,
+    val browseId: String? = null,
+    val params: String? = null,
+    val deselectParams: String? = null,
+)
+
+data class HomeFeed(val chips: List<HomeChip>, val sections: List<UiSection>) {
+    companion object {
+        val Empty = HomeFeed(emptyList(), emptyList())
+    }
+}
+
+data class MoodAndGenre(val title: String, val browseId: String?, val params: String?, val color: Long?)
 
 data class AlbumDetails(val album: AlbumItem, val songs: List<Track>, val description: String?)
 
@@ -121,9 +142,15 @@ data class ArtistDetails(
     val topSongs: List<Track>,
     val subscriberCount: String?,
     val monthlyListeners: String?,
+    val description: String? = null,
 )
 
-data class PlaylistDetails(val playlist: PlaylistItem, val songs: List<Track>, val related: List<MediaCard>)
+data class PlaylistDetails(
+    val playlist: PlaylistItem,
+    val songs: List<Track>,
+    val related: List<MediaCard>,
+    val relatedTitle: String? = null,
+)
 
 sealed interface Route {
     data object Home : Route
@@ -163,4 +190,6 @@ data class PersistedState(
     val quality: String = AudioQuality.HIGH.name,
     val providers: List<String> = listOf("Musixmatch", "LrcLib", "Unison", "Better Lyrics", "YouLyPlus"),
     val radio: Boolean = true,
+    val pureBlack: Boolean = false,
+    val searches: List<String> = emptyList(),
 )

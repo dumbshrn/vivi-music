@@ -68,6 +68,9 @@ fun App() {
     val seed = if (Store.dynamicColors) (Store.artSeed ?: Store.seed) else Store.seed
 
     ViviTheme(darkTheme = dark, seed = seed, pureBlack = Store.pureBlack) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onSurface,
+        ) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
             Row(Modifier.fillMaxSize().padding(bottom = 94.dp)) {
                 AppRail()
@@ -114,6 +117,7 @@ fun App() {
                     )
                 }
             }
+        }
         }
     }
 }
@@ -225,7 +229,8 @@ private fun TopBar() {
         Spacer(Modifier.weight(1f))
 
         // Same pill search bar the app renders on every top-level screen.
-        Surface(
+        if (Store.route != Route.Search) {
+            Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier.width(380.dp).height(52.dp).clickable { Store.navigate(Route.Search) },
@@ -248,6 +253,7 @@ private fun TopBar() {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
             }
         }
     }

@@ -13,27 +13,41 @@ fun main() =
     runBlocking {
         DesktopInit.initialize()
         println("== HOME ==")
+        var firstSong: String? = null
         Repository.home()
-            .onSuccess { sections ->
-                sections.take(6).forEach { section ->
+            .onSuccess { feed ->
+                println("chips=${feed.chips.map { it.title }}")
+                feed.sections.take(8).forEach { section ->
                     println("• ${section.title} (${section.cards.size}) -> ${section.cards.firstOrNull()?.title}")
                 }
+                firstSong =
+                    feed.sections
+                        .firstNotNullOfOrNull { section ->
+                            section.cards.filterIsInstance<MediaCard.SongCard>().firstOrNull()?.track?.id
+                        }
             }
             .onFailure { println("HOME FAILED: ${it.message}") }
 
+        println("== EXPLORE ==")
+        Repository.explore()
+            .onSuccess { (sections, moods) ->
+                println("sections=${sections.map { it.title }} moods=${moods.take(6).map { it.title }}")
+            }
+            .onFailure { println("EXPLORE FAILED: ${it.message}") }
+
         println("== SEARCH ==")
-        var firstSong: String? = null
         Repository.searchAll("blinding lights").forEach { section ->
             println("• ${section.title} (${section.cards.size}) -> ${section.cards.take(2).map { it.title }}")
             if (firstSong == null) {
                 firstSong = section.cards.filterIsInstance<MediaCard.SongCard>().firstOrNull()?.track?.id
             }
         }
+        println("suggestions=${Repository.searchSuggestions("blin")}")
 
         println("== ARTIST ==")
         Repository.artist("UClYV6hHlupm_S_ObS1W-DYw")
             .onSuccess { artist ->
-                println("${artist.artist.title} • ${artist.subscriberCount} • topSongs=${artist.topSongs.size} • sections=${artist.sections.size}")
+                println("${artist.artist.title} • ${artist.subscriberCount} • topSongs=${artist.topSongs.size} • sections=${artist.sections.map { it.title }}")
             }
             .onFailure { println("ARTIST FAILED: ${it.message}") }
 
